@@ -365,6 +365,9 @@ async def cloud(hass: HomeAssistant, socket_enabled: None, monkeypatch: pytest.M
     deadline = time.monotonic() + 10
     while (left := _integration_threads(before)) and time.monotonic() < deadline:
         await asyncio.sleep(0.05)
+    # Let the I/O loop accept the final TCP reconnect after the client thread has stopped.
+    await asyncio.sleep(0.01)
+    await hass.async_block_till_done()
     await fake.stop()
     assert not left, f"still running after the unload: {[t.name for t in left]}"
 

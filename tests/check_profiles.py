@@ -141,7 +141,7 @@ placeholders = lambda s: sorted(set(re.findall(r"\{(\w+)\}", str(s))))
 check("en and ru use the same placeholders in every string",
       [".".join(k) for k in en_leaves if k in ru_leaves and placeholders(en_leaves[k]) != placeholders(ru_leaves[k])], [])
 
-entity_keys = {(Path(f).stem, k) for f, text in CODE.items() for k in re.findall(r"""_attr_translation_key = ["'](\w+)["']""", text)}
+entity_keys = {("haier_evo" if Path(f).stem == "machine" else Path(f).stem, k) for f, text in CODE.items() for k in re.findall(r"""_attr_translation_key = ["'](\w+)["']""", text)}
 check("every entity translation key of the code is translated",
       sorted(f"{p}.{k}" for p, k in entity_keys if k not in EN.get("entity", {}).get(p, {})), [])
 check("every translated entity is in the code",

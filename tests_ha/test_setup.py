@@ -280,6 +280,8 @@ async def test_tokens_revoked_while_running_ask_for_the_password(
 ) -> None:
     """The websocket thread finds the sign-in refused: Home Assistant shows
     the re-authentication (started from that thread, in the event loop)."""
+    # Exercise revocation, rather than the grace period for a newly issued token.
+    haier(hass, setup_entry)._token_issued = time.monotonic() - C.TOKEN_FRESH - 1
     cloud.access.clear()
     cloud.refresh.clear()
     await cloud.drop_sessions()

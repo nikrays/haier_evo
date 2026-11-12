@@ -259,6 +259,7 @@ check("start: the chosen program's group command with all its values, as one mes
 w90._control_lock.acquire()
 check("a second press while a command is on its way is refused", raised(w90.start), "laundry_busy")
 w90._control_lock.release()
+program_state(w90, "FINISHED")  # a fresh report releases the pending-start guard
 w90.selected_program = None
 check("no program chosen: nothing to start", raised(w90.start), "laundry_no_program")
 w90._haier.laundry_control = False

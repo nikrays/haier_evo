@@ -6,6 +6,9 @@ Replaces the unmaintained ``ratelimit`` package: at most ``calls`` calls per
 wakes up a caller sleeping in ``sleep_and_retry``.
 """
 import threading
+import math
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import time
 from functools import wraps
 
@@ -77,3 +80,15 @@ class ResettableLimits:
             self.num_calls = 0
             self.last_reset = time.monotonic()
         self._wakeup.set()
+
+
+def retry_after_seconds(value, minimum: float = 60) -> float:
+    """Honor numeric and HTTP-date Retry-After values, never a negative/NaN delay."""
+    try:
+        delay = float(value)
+    except (ValueError, TypeError):
+        try:
+            delay = (parsedate_to_datetime(value) - datetime.now(timezone.utc)).total_seconds()
+        except (ValueError, TypeError, OverflowError):
+            delay = minimum
+    return max(minimum, delay) if math.isfinite(delay) else minimum

@@ -1,4 +1,5 @@
 import weakref
+from homeassistant.const import EntityCategory
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
 from .const import DOMAIN
@@ -125,6 +126,7 @@ class HaierLaundryProgramSelect(HaierEntityMixin, SelectEntity):
     one sends nothing, the program starts only with the button."""
     _attr_should_poll = False
     _attr_icon = "mdi:washing-machine"
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(self, device: api.HaierLaundry) -> None:
         self._device = weakref.proxy(device)

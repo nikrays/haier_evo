@@ -3,10 +3,13 @@ import asyncio
 import os
 import re
 import threading
+from pathlib import Path
 from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.event import async_track_time_interval
@@ -218,6 +221,16 @@ def _remove_legacy_tokens(path: str) -> None:
         _LOGGER.warning(f"Failed to remove the old tokens file {path}: {e!r}")
 
 
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    if hass.http is None:
+        return True  # headless Home Assistant still supports all entities and services
+    url = "/haier_evo_frontend/haier-laundry-card.js"
+    path = Path(__file__).parent / "haier-laundry-card.js"
+    await hass.http.async_register_static_paths([StaticPathConfig(url, str(path), False)])
+    add_extra_js_url(hass, url)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     integration = await async_get_integration(hass, DOMAIN)
     _LOGGER.debug(f'Integration version: {integration.version}')
@@ -319,6 +332,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = haier_object
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    if any(isinstance(device, api.HaierLaundry) for device in haier_object.devices):
+        from .machine import async_setup_machines
+        from .coordinator import HaierLaundryCoordinator
+        haier_object.laundry_platform = await async_setup_machines(hass, entry)
+        for device in haier_object.devices:
+            if isinstance(device, api.HaierLaundry):
+                coordinator = HaierLaundryCoordinator(hass, entry, device)
+                entry.async_on_unload(coordinator.async_add_listener(lambda: None))
+                entry.async_on_unload(device.events.close)
 
     if from_cache:
         haier_object.connect_in_thread()
@@ -348,6 +370,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         haier_object = hass.data[DOMAIN].pop(entry.entry_id)
         _LOGGER.debug(f'Integration {haier_object} unload...')
+        for device in haier_object.devices:
+            if isinstance(device, api.HaierLaundry):
+                device.events.close()
+                if device.recovery is not None:
+                    await device.recovery.async_shutdown()
+        if platform := getattr(haier_object, "laundry_platform", None):
+            await platform.async_destroy()
         await _stop(hass, haier_object)
     return unload_ok
 

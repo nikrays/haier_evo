@@ -5,6 +5,7 @@ one command, as the app does; what is allowed is decided by the device
 (api.HaierLaundry: remote control on, a state the app offers the action in).
 """
 import weakref
+from homeassistant.const import EntityCategory
 from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -45,6 +46,7 @@ def remove_control_entities(hass: HomeAssistant, devices, platform: str, suffixe
 
 class HaierLaundryButton(HaierEntityMixin, ButtonEntity):
     _attr_should_poll = False
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(self, device: api.HaierLaundry, action: str) -> None:
         self._device = weakref.proxy(device)
